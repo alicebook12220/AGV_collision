@@ -4,7 +4,7 @@ import time
 import glob
 from tkinter import *
 
-
+warn_frame_max = 10
 
 lane_cfg = Tk()
 
@@ -51,7 +51,7 @@ out = cv2.VideoWriter('output/G0210936.mp4',cv2.VideoWriter_fourcc(*'mp4v'), 3, 
 fps = vc.get(cv2.CAP_PROP_FPS)
 print(fps)
 frame_count = int(vc.get(cv2.CAP_PROP_FRAME_COUNT))
-warn_count = 0 #物體出現在警戒區內的次數
+warn_frame_count = 0 #物體出現在警戒區內的次數
 warn_bool = False #檢查是否有物體出現在警戒區內
 for idx in range(frame_count):
 	ret, frame = vc.read()
@@ -169,15 +169,15 @@ for idx in range(frame_count):
 				#if 255 in warn_mask[y_top + height - 1, x_left:x_left + width - 1]:
 				if warn_sum / len(mask_obj_bottom) > 0.3
 					warn_bool = True
-					warn_count = warn_count + 1
-					if warn_count > 10:
+					warn_frame_count = warn_frame_count + 1
+					if warn_frame_count > warn_frame_max:
 						#判斷角點落在黃區 or 紅區
 						if (y_top + height) <= warn_stop_y:
 							slow = True
 						elif (y_top + height) > warn_stop_y:
 							stop = True
 			if not warn_bool:
-				warn_count = 0
+				warn_frame_count = 0
 			if stop:
 				cv2.putText(frame, "Stop", (750,200), cv2.FONT_HERSHEY_DUPLEX, 5, (0,0,255), 10)
 			elif slow:
