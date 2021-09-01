@@ -4,6 +4,8 @@ import time
 import glob
 from tkinter import *
 
+
+
 lane_cfg = Tk()
 
 net = cv2.dnn_DetectionModel('cfg/custom-yolov4-tiny_12.cfg', 'model/custom-yolov4-tiny_acc_7388.weights')
@@ -43,19 +45,22 @@ warn_line.pack()
 stop_line.pack()
 
 size = (img_width, img_heigth)
-out = cv2.VideoWriter('output/G0210936.mp4',cv2.VideoWriter_fourcc(*'mp4v'), 30, size)
+out = cv2.VideoWriter('output/G0210936.mp4',cv2.VideoWriter_fourcc(*'mp4v'), 3, (480,360))
 
 #video to frame & frame to video
 fps = vc.get(cv2.CAP_PROP_FPS)
 print(fps)
 frame_count = int(vc.get(cv2.CAP_PROP_FRAME_COUNT))
+warn_count = 0 #物體出現在警戒區內的次數
+warn_bool = False #檢查是否有物體出現在警戒區內
 for idx in range(frame_count):
 	ret, frame = vc.read()
-	if frame is not None:
+	#if frame is not None:
+	if idx % 20 == 0:
 		#if idx % 100 == 0:
 		#	print("processing " + str(idx) + " images")
 		#start = time.time()
-		classes, confidences, boxes = net.detect(frame, confThreshold=0.1, nmsThreshold=0.5) #0.9s
+		classes, confidences, boxes = net.detect(frame, confThreshold=0.3, nmsThreshold=0.5) #0.9s
 		lane_cfg.update()
 		#車道左線頂 x
 		lane_left_top_x = lane_left_top.get()
@@ -100,6 +105,7 @@ for idx in range(frame_count):
 		cv2.line(frame, (0, warn_stop_y), (img_width - 1, warn_stop_y), (0,0,255), 5)
 		#end = time.time()
 		#print(end - start)
+		warn_bool = False
 		if len(boxes) > 0:
 			for classId, confidence, box in zip(classes.flatten(), confidences.flatten(), boxes):
 				pstring = str(int(100 * confidence)) + "%"
@@ -140,34 +146,52 @@ for idx in range(frame_count):
 					pstring = "trolley " + pstring
 				elif classId == 7:
 					rectColor = (255, 128, 0)
-					pstring = "towcar " + pstring
+					pstring = "board " + pstring
 				elif classId == 8:
 					rectColor = (255, 255, 128)
-					pstring = "board " + pstring
-				if int(100 * confidence) > 20:
+					pstring = "glass_set " + pstring
+				elif classId == 9:
+					rectColor = (255, 128, 128)
+					pstring = "forklift " + pstring
+				elif classId == 10:
+					rectColor = (255, 0, 128)
+					pstring = "chair " + pstring
+				elif classId == 11:
+					rectColor = (128, 0, 255)
+					pstring = "footboard " + pstring
+				#if int(100 * confidence) > 30:
 				# 在影像中標出Box邊界和類別、信心度
-					cv2.rectangle(frame, boundingBox[0], boundingBox[2], rectColor, 2)
-					cv2.putText(frame, pstring, textCoord, cv2.FONT_HERSHEY_DUPLEX, 1, rectColor, 2)
+				cv2.rectangle(frame, boundingBox[0], boundingBox[2], rectColor, 2)
+				cv2.putText(frame, pstring, textCoord, cv2.FONT_HERSHEY_DUPLEX, 1, rectColor, 2)
 				#判斷角點是否在警戒區域內
-				if 255 in warn_mask[y_top + height - 1, x_left:x_left + width - 1]:
-					#判斷角點落在黃區 or 紅區
-					if (y_top + height) <= warn_stop_y:
-						slow = True
-					elif (y_top + height) > warn_stop_y:
-						stop = True
+				mask_obj_bottom = warn_mask[y_top + height - 1, x_left:x_left + width - 1] 
+				warn_sum = np.sum(mask_obj_bottom == 255) / 3.0 #obj底線共有多少個點在警戒區內
+				#if 255 in warn_mask[y_top + height - 1, x_left:x_left + width - 1]:
+				if warn_sum / len(mask_obj_bottom) > 0.3
+					warn_bool = True
+					warn_count = warn_count + 1
+					if warn_count > 10:
+						#判斷角點落在黃區 or 紅區
+						if (y_top + height) <= warn_stop_y:
+							slow = True
+						elif (y_top + height) > warn_stop_y:
+							stop = True
+			if not warn_bool:
+				warn_count = 0
 			if stop:
 				cv2.putText(frame, "Stop", (750,200), cv2.FONT_HERSHEY_DUPLEX, 5, (0,0,255), 10)
 			elif slow:
 				cv2.putText(frame, "Slow Down", (540,200), cv2.FONT_HERSHEY_DUPLEX, 5, (0,128,255), 10)
 			else:
 				pass
-			out.write(frame)
-		else:
-			out.write(frame)
-		frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
-		warn_mask = cv2.resize(warn_mask, (640, 480), interpolation=cv2.INTER_AREA)
-		cv2.imshow("frame", frame)
-		cv2.imshow("mask", warn_mask)
+		frame = cv2.resize(frame, (480, 360), interpolation=cv2.INTER_AREA)
+		out.write(frame)
+		warn_mask = cv2.resize(warn_mask, (480, 360), interpolation=cv2.INTER_AREA)
+		frame_new = np.hstack((warn_mask,frame))
+		cv2.imshow("frame", frame_new)
+		#cv2.imshow("mask", warn_mask)
 		cv2.waitKey(1)
+	else:
+		continue
 out.release()
 vc.release()  
