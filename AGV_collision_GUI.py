@@ -3,13 +3,26 @@ import numpy as np
 import time
 import glob
 from tkinter import *
+import RPi.GPIO as GPIO
 
 warn_frame_max = 10
+
+RelayA = [21, 20, 26]
+CH1 = 20
+CH2 = 21
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+
+GPIO.setup(RelayA, GPIO.OUT, initial=GPIO.LOW)
+time.sleep(1)		
 
 lane_cfg = Tk()
 
 net = cv2.dnn_DetectionModel('cfg/custom-yolov4-tiny_12.cfg', 'model/custom-yolov4-tiny_acc_7388.weights')
-net.setInputSize(608, 608)
+net.setInputSize(416, 416)
+net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
+net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
 net.setInputScale(1.0 / 255)
 net.setInputSwapRB(True)
 
@@ -19,7 +32,9 @@ net.setInputSwapRB(True)
 #model = cv2.dnn_DetectionModel(net)
 #model.setInputParams(size = (512, 512), scale = 1.0/255)
 
-vc = cv2.VideoCapture("image/G0210936.mp4")
+vc = cv2.VideoCapture(0)
+vc.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+vc.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 ret, frame = vc.read()
 
 img_width = frame.shape[1]
@@ -30,12 +45,12 @@ lane_right_top = Scale(lane_cfg, label='右車道線頂部 x 座標', length=300
 lane_right_bottom = Scale(lane_cfg, label='右車道線底部 x 座標', length=300, from_=0, to=img_width - 1, orient=HORIZONTAL)
 warn_line = Scale(lane_cfg, label='減速範圍', length=100, from_=282, to=img_heigth - 1)
 stop_line = Scale(lane_cfg, label='停止範圍', length=100, from_=282, to=img_heigth - 1)
-lane_left_top.set(873)
-lane_left_bottom.set(432)
-lane_right_top.set(996)
-lane_right_bottom.set(1458)
-warn_line.set(815)
-stop_line.set(965)
+lane_left_top.set(int(img_width/3))
+lane_left_bottom.set(int(img_width/4))
+lane_right_top.set(int(img_width/3*2))
+lane_right_bottom.set(int(img_width/4*3))
+warn_line.set(int(img_heigth/4*3))
+stop_line.set(int(img_heigth/5*4))
 
 lane_left_top.pack()
 lane_left_bottom.pack()
@@ -45,18 +60,17 @@ warn_line.pack()
 stop_line.pack()
 
 size = (img_width, img_heigth)
-out = cv2.VideoWriter('output/G0210936.mp4',cv2.VideoWriter_fourcc(*'mp4v'), 3, (480,360))
+#out = cv2.VideoWriter('output/G0210936.mp4',cv2.VideoWriter_fourcc(*'mp4v'), 3, (480,360))
 
 #video to frame & frame to video
 fps = vc.get(cv2.CAP_PROP_FPS)
 print(fps)
-frame_count = int(vc.get(cv2.CAP_PROP_FRAME_COUNT))
 warn_frame_count = 0 #物體出現在警戒區內的次數
 warn_bool = False #檢查是否有物體出現在警戒區內
-for idx in range(frame_count):
+while(1):
 	ret, frame = vc.read()
-	#if frame is not None:
-	if idx % 20 == 0:
+	if frame is not None:
+	#if idx % 20 == 0:
 		#if idx % 100 == 0:
 		#	print("processing " + str(idx) + " images")
 		#start = time.time()
@@ -79,8 +93,8 @@ for idx in range(frame_count):
 		#先給警戒線上黑色，避免找錯警戒角點
 		cv2.line(frame, (0, warn_top_y), (img_width - 1, warn_top_y), (0,0,0), 5)
 		#畫綠車道線
-		cv2.line(frame, (lane_left_top_x, 282), (warn_left_bottom_x, 1079), (0,255,0), 5)
-		cv2.line(frame, (lane_right_top_x, 282), (warn_right_bottom_x, 1079), (0,255,0), 5)
+		cv2.line(frame, (lane_left_top_x, int(img_heigth/5)), (warn_left_bottom_x, img_heigth - 1), (0,255,0), 5)
+		cv2.line(frame, (lane_right_top_x, int(img_heigth/5)), (warn_right_bottom_x, img_heigth - 1), (0,255,0), 5)
 		#找警戒線與車道的交叉點
 		warn_line_where = np.where(frame[warn_top_y,:,1] == 255)
 		#警戒區頂線左 x
@@ -106,6 +120,7 @@ for idx in range(frame_count):
 		#end = time.time()
 		#print(end - start)
 		warn_bool = False
+		warn_sum = 0
 		if len(boxes) > 0:
 			for classId, confidence, box in zip(classes.flatten(), confidences.flatten(), boxes):
 				pstring = str(int(100 * confidence)) + "%"
@@ -167,7 +182,7 @@ for idx in range(frame_count):
 				mask_obj_bottom = warn_mask[y_top + height - 1, x_left:x_left + width - 1] 
 				warn_sum = np.sum(mask_obj_bottom == 255) / 3.0 #obj底線共有多少個點在警戒區內
 				#if 255 in warn_mask[y_top + height - 1, x_left:x_left + width - 1]:
-				if warn_sum / len(mask_obj_bottom) > 0.3
+				if warn_sum / len(mask_obj_bottom) > 0.3:
 					warn_bool = True
 					warn_frame_count = warn_frame_count + 1
 					if warn_frame_count > warn_frame_max:
@@ -179,14 +194,22 @@ for idx in range(frame_count):
 			if not warn_bool:
 				warn_frame_count = 0
 			if stop:
-				cv2.putText(frame, "Stop", (750,200), cv2.FONT_HERSHEY_DUPLEX, 5, (0,0,255), 10)
+				cv2.putText(frame, "Stop", (int(img_width/3),int(img_heigth/5)), cv2.FONT_HERSHEY_DUPLEX, 5, (0,0,255), 8)
+				GPIO.output(CH1, GPIO.LOW)
+				GPIO.output(CH2, GPIO.HIGH)
 			elif slow:
-				cv2.putText(frame, "Slow Down", (540,200), cv2.FONT_HERSHEY_DUPLEX, 5, (0,128,255), 10)
+				cv2.putText(frame, "Slow Down", (int(img_width/3),int(img_heigth/5)), cv2.FONT_HERSHEY_DUPLEX, 5, (0,128,255), 8)
+				GPIO.output(CH2, GPIO.LOW)
+				GPIO.output(CH1, GPIO.HIGH)
 			else:
-				pass
-		frame = cv2.resize(frame, (480, 360), interpolation=cv2.INTER_AREA)
-		out.write(frame)
-		warn_mask = cv2.resize(warn_mask, (480, 360), interpolation=cv2.INTER_AREA)
+				GPIO.output(CH1, GPIO.LOW)
+				GPIO.output(CH2, GPIO.LOW)
+		else:
+			GPIO.output(CH1, GPIO.LOW)
+			GPIO.output(CH2, GPIO.LOW)
+		#frame = cv2.resize(frame, (480, 360), interpolation=cv2.INTER_AREA)
+		#out.write(frame)
+		warn_mask = cv2.resize(warn_mask, (640, 480), interpolation=cv2.INTER_AREA)
 		frame_new = np.hstack((warn_mask,frame))
 		cv2.imshow("frame", frame_new)
 		#cv2.imshow("mask", warn_mask)
