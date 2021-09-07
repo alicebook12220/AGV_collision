@@ -7,19 +7,19 @@ import RPi.GPIO as GPIO
 
 warn_frame_max = 10
 
-RelayA = [21, 20, 26]
-CH1 = 20
-CH2 = 21
+RelayA = [21, 20] #[21, 20, 26]
+CH1 = 21
+CH2 = 20
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
-GPIO.setup(RelayA, GPIO.OUT, initial=GPIO.LOW)
+GPIO.setup(RelayA, GPIO.OUT, initial=GPIO.HIGH)
 time.sleep(1)		
 
 lane_cfg = Tk()
 
-net = cv2.dnn_DetectionModel('cfg/custom-yolov4-tiny_12.cfg', 'model/custom-yolov4-tiny_acc_7388.weights')
+net = cv2.dnn_DetectionModel('/home/auo/AGV/cfg/custom-yolov4-tiny_12.cfg', '/home/auo/AGV/model/custom-yolov4-tiny_new_66.weights')
 net.setInputSize(416, 416)
 net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
 net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
@@ -43,8 +43,8 @@ lane_left_top = Scale(lane_cfg, label='左車道線頂部 x 座標', length=300,
 lane_left_bottom = Scale(lane_cfg, label='左車道線底部 x 座標', length=300, from_=0, to=img_width - 1, orient=HORIZONTAL)
 lane_right_top = Scale(lane_cfg, label='右車道線頂部 x 座標', length=300, from_=0, to=img_width - 1, orient=HORIZONTAL)
 lane_right_bottom = Scale(lane_cfg, label='右車道線底部 x 座標', length=300, from_=0, to=img_width - 1, orient=HORIZONTAL)
-warn_line = Scale(lane_cfg, label='減速範圍', length=100, from_=282, to=img_heigth - 1)
-stop_line = Scale(lane_cfg, label='停止範圍', length=100, from_=282, to=img_heigth - 1)
+warn_line = Scale(lane_cfg, label='減速範圍', length=100, from_=int(img_heigth/2), to=img_heigth - 1)
+stop_line = Scale(lane_cfg, label='停止範圍', length=100, from_=int(img_heigth/2), to=img_heigth - 1)
 lane_left_top.set(int(img_width/3))
 lane_left_bottom.set(int(img_width/4))
 lane_right_top.set(int(img_width/3*2))
@@ -199,14 +199,14 @@ while(1):
 				GPIO.output(CH2, GPIO.HIGH)
 			elif slow:
 				cv2.putText(frame, "Slow Down", (int(img_width/3),int(img_heigth/5)), cv2.FONT_HERSHEY_DUPLEX, 5, (0,128,255), 8)
-				GPIO.output(CH2, GPIO.LOW)
 				GPIO.output(CH1, GPIO.HIGH)
-			else:
-				GPIO.output(CH1, GPIO.LOW)
 				GPIO.output(CH2, GPIO.LOW)
+			else:
+				GPIO.output(CH1, GPIO.HIGH)
+				GPIO.output(CH2, GPIO.HIGH)
 		else:
-			GPIO.output(CH1, GPIO.LOW)
-			GPIO.output(CH2, GPIO.LOW)
+			GPIO.output(CH1, GPIO.HIGH)
+			GPIO.output(CH2, GPIO.HIGH)
 		#frame = cv2.resize(frame, (480, 360), interpolation=cv2.INTER_AREA)
 		#out.write(frame)
 		warn_mask = cv2.resize(warn_mask, (640, 480), interpolation=cv2.INTER_AREA)
