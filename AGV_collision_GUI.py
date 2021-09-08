@@ -5,8 +5,9 @@ import glob
 from tkinter import *
 import RPi.GPIO as GPIO
 
+#可容許警告的frame數量
 warn_frame_max = 10
-
+#繼電器腳位
 RelayA = [21, 20] #[21, 20, 26]
 CH1 = 21
 CH2 = 20
@@ -17,8 +18,10 @@ GPIO.setwarnings(False)
 GPIO.setup(RelayA, GPIO.OUT, initial=GPIO.HIGH)
 time.sleep(1)		
 
+#tk GUI介面
 lane_cfg = Tk()
 
+#讀取AI模型
 net = cv2.dnn_DetectionModel('/home/auo/AGV/cfg/custom-yolov4-tiny_12.cfg', '/home/auo/AGV/model/custom-yolov4-tiny_new_66.weights')
 net.setInputSize(416, 416)
 net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
@@ -45,6 +48,7 @@ lane_right_top = Scale(lane_cfg, label='右車道線頂部 x 座標', length=300
 lane_right_bottom = Scale(lane_cfg, label='右車道線底部 x 座標', length=300, from_=0, to=img_width - 1, orient=HORIZONTAL)
 warn_line = Scale(lane_cfg, label='減速範圍', length=100, from_=int(img_heigth/2), to=img_heigth - 1)
 stop_line = Scale(lane_cfg, label='停止範圍', length=100, from_=int(img_heigth/2), to=img_heigth - 1)
+#車道線及警戒線初始值
 lane_left_top.set(int(img_width/3))
 lane_left_bottom.set(int(img_width/4))
 lane_right_top.set(int(img_width/3*2))
