@@ -178,6 +178,11 @@ while(1):
 				elif classId == 11:
 					rectColor = (128, 0, 255)
 					pstring = "footboard " + pstring
+				elif classId == 12:
+					rectColor = (128, 128, 255)
+					pstring = "fire extinguisher " + pstring
+				elif classId == 13:
+					continue
 				#if int(100 * confidence) > 30:
 				# 在影像中標出Box邊界和類別、信心度
 				cv2.rectangle(frame, boundingBox[0], boundingBox[2], rectColor, 2)
