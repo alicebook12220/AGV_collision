@@ -38,6 +38,8 @@ net.setInputSwapRB(True)
 vc = cv2.VideoCapture(0)
 vc.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 vc.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+fps = vc.get(cv2.CAP_PROP_FPS)
+print(fps)
 ret, frame = vc.read()
 
 img_width = frame.shape[1]
@@ -67,8 +69,6 @@ size = (img_width, img_heigth)
 #out = cv2.VideoWriter('output/G0210936.mp4',cv2.VideoWriter_fourcc(*'mp4v'), 3, (480,360))
 
 #video to frame & frame to video
-fps = vc.get(cv2.CAP_PROP_FPS)
-print(fps)
 warn_frame_count = 0 #物體出現在警戒區內的次數
 warn_bool = False #檢查是否有物體出現在警戒區內
 while(1):
