@@ -1,5 +1,5 @@
-Jetson nano
-:參考https://github.com/IntelRealSense/librealsense/blob/master/doc/distribution_linux.md
+Jetson nano:
+參考https://github.com/IntelRealSense/librealsense/blob/master/doc/distribution_linux.md
 安裝 RealSense Viewer
 sudo apt-key adv --keyserver keys.gnupg.net --recv-key F6E65AC044F831AC80A06380C8B3A55A6F3EFCDE || sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-key F6E65AC044F831AC80A06380C8B3A55A6F3EFCDE
 sudo add-apt-repository "deb https://librealsense.intel.com/Debian/apt-repo $(lsb_release -cs) main" -u
@@ -27,3 +27,9 @@ python3
 >>rs.file
 sudo cp /home/auo/librealsense/wrappers/python/pyrealsense2/__init__.py /usr/local/lib/python3.6/pyrealsense2
 
+raspberry pi 4:
+參考
+https://www.youtube.com/watch?v=8UUkDBBURZo
+https://github.com/acrobotic/Ai_Demos_RPi/wiki/Raspberry-Pi-4-and-Intel-RealSense-D435
+https://github.com/acrobotic/Ai_Demos_RPi/wiki/Gettings-Started-with-OpenCV
+開始安裝
