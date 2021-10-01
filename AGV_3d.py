@@ -44,7 +44,6 @@ def exit_btn():
 #錄影
 now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-out = cv2.VideoWriter("/home/auo/realsense/video/" + now + ".mp4", fourcc, 15.0, (1280, 480))
 #讀取設定檔
 config = configparser.ConfigParser()
 config.read("/home/auo/realsense/collision_cfg.ini")
@@ -161,12 +160,12 @@ try:
     while True:
         if time.time() - start > 180:
             out.release()
+            start = time.time()
             video_status = True
         if video_status:
             #錄影
             now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            out = cv2.VideoWriter(now + ".mp4", fourcc, 30.0, (1280, 480))
+            out = cv2.VideoWriter("/home/auo/realsense/video/" + now + ".mp4", fourcc, 10.0, (1280, 480))
             video_status = False
         lane_cfg.update()
         # Wait for a coherent pair of frames: depth and color
@@ -234,18 +233,19 @@ try:
         #計算近距離pixel數量
         depth_warn_mask = depth_image[warn_mask == 255]
         depth_warn_mask[depth_warn_mask == 0] = 50000
-        slow_depth = depth_warn_mask[depth_warn_mask < slow_dis_val]
-        stop_depth = depth_warn_mask[depth_warn_mask < stop_dis_val]
-        statusbar_text = "slow area:" + str(len(slow_depth)) + " stop area:" + str(len(stop_depth))
+        slow_depth = len(depth_warn_mask[depth_warn_mask < slow_dis_val])
+        stop_depth = len(depth_warn_mask[depth_warn_mask < stop_dis_val])
+        statusbar_text = "slow area:" + str(slow_depth) + " stop area:" + str(stop_depth)
         statusbar.configure(text = statusbar_text)
-        
-        if len(stop_depth) > stop_obj_val:
-            cv2.putText(color_image, "Stop", (int(img_width/4),int(img_heigth/4)), cv2.FONT_HERSHEY_DUPLEX, 5, (0,0,255), 6)
+        cv2.putText(color_image, "slow obj:" + str(slow_depth), (20,50), cv2.FONT_HERSHEY_DUPLEX, 1, (0,255,255), 2)
+        cv2.putText(color_image, "stop obj:" + str(stop_depth), (20,100), cv2.FONT_HERSHEY_DUPLEX, 1, (0,255,255), 2)
+        if stop_depth > stop_obj_val:
+            cv2.putText(color_image, "Stop", (int(img_width/2),int(img_heigth/5)), cv2.FONT_HERSHEY_DUPLEX, 3, (0,0,255), 3)
             warn_frame_count = warn_frame_count + 1
             GPIO.output(CH1, GPIO.LOW)
             GPIO.output(CH2, GPIO.HIGH)
-        elif len(slow_depth) > slow_obj_val:
-            cv2.putText(color_image, "Slow", (int(img_width/4),int(img_heigth/4)), cv2.FONT_HERSHEY_DUPLEX, 5, (0,128,255), 6)
+        elif slow_depth > slow_obj_val:
+            cv2.putText(color_image, "Slow", (int(img_width/2),int(img_heigth/5)), cv2.FONT_HERSHEY_DUPLEX, 3, (0,128,255), 3)
             warn_frame_count = warn_frame_count + 1
             GPIO.output(CH1, GPIO.HIGH)
             GPIO.output(CH2, GPIO.LOW)
