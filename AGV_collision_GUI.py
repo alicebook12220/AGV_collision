@@ -1,13 +1,54 @@
 import cv2
 import numpy as np
 import time
+import datetime
 import glob
 from tkinter import *
+from tkinter import ttk, messagebox
 import RPi.GPIO as GPIO
+import configparser
 
-#可容許警告的frame數量
-warn_frame_max = 10
-#繼電器腳位
+def generate_ini(cfg_name = r'/home/auo/AGV/collision_cfg.ini'):
+    msg_result = messagebox.askokcancel("Notification", "是否覆蓋現有設定檔？")
+    if msg_result == True:
+        with open(cfg_name, 'w') as cfgfile:
+            cfg = configparser.ConfigParser()
+            sectione_name = ['Collision']
+            for i in sectione_name:
+                cfg.add_section(i)
+                if i == 'Collision':
+                    cfg.set(i, 'lane_left_top_x', str(lane_left_top.get()))
+                    cfg.set(i, 'warn_left_bottom_x', str(lane_left_bottom.get()))
+                    cfg.set(i, 'lane_right_top_x', str(lane_right_top.get()))
+                    cfg.set(i, 'warn_right_bottom_x', str(lane_right_bottom.get()))
+                    cfg.set(i, 'warn_top_y', str(warn_line.get()))
+                    cfg.set(i, 'warn_top_y', str(stop_line.get()))
+            cfg.write(cfgfile)
+            cfgfile.close()
+            #lane_cfg.destroy()
+            #cv2.destroyAllWindows()
+
+def exit_btn():
+    msg_result = messagebox.askokcancel("Notification", "確定離開？")
+    if msg_result == True:
+        lane_cfg.destroy()
+        cv2.destroyAllWindows()
+
+#讀取設定檔
+config = configparser.ConfigParser()
+config.read("/home/auo/AGV/collision_cfg.ini")
+lane_left_top_x = config["Collision"]["lane_left_top_x"]
+warn_left_bottom_x = config["Collision"]["warn_left_bottom_x"]
+lane_right_top_x = config["Collision"]["lane_right_top_x"]
+warn_right_bottom_x = config["Collision"]["warn_right_bottom_x"]
+warn_top_y = config["Collision"]["warn_top_y"]
+stop_top_y = config["Collision"]["stop_top_y"] 
+
+
+sec = 60
+
+warn_frame_max = 15
+
 RelayA = [21, 20] #[21, 20, 26]
 CH1 = 21
 CH2 = 20
@@ -18,11 +59,9 @@ GPIO.setwarnings(False)
 GPIO.setup(RelayA, GPIO.OUT, initial=GPIO.HIGH)
 time.sleep(1)		
 
-#tk GUI介面
 lane_cfg = Tk()
 
-#讀取AI模型
-net = cv2.dnn_DetectionModel('/home/auo/AGV/cfg/custom-yolov4-tiny_12.cfg', '/home/auo/AGV/model/custom-yolov4-tiny_new_66.weights')
+net = cv2.dnn_DetectionModel('/home/auo/AGV/cfg/custom-yolov4-tiny_14.cfg', '/home/auo/AGV/model/custom-yolov4-tiny_14_69.weights')
 net.setInputSize(416, 416)
 net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
 net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
@@ -38,8 +77,6 @@ net.setInputSwapRB(True)
 vc = cv2.VideoCapture(0)
 vc.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 vc.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-fps = vc.get(cv2.CAP_PROP_FPS)
-print(fps)
 ret, frame = vc.read()
 
 img_width = frame.shape[1]
@@ -50,13 +87,25 @@ lane_right_top = Scale(lane_cfg, label='右車道線頂部 x 座標', length=300
 lane_right_bottom = Scale(lane_cfg, label='右車道線底部 x 座標', length=300, from_=0, to=img_width - 1, orient=HORIZONTAL)
 warn_line = Scale(lane_cfg, label='減速範圍', length=100, from_=int(img_heigth/2), to=img_heigth - 1)
 stop_line = Scale(lane_cfg, label='停止範圍', length=100, from_=int(img_heigth/2), to=img_heigth - 1)
-#車道線及警戒線初始值
-lane_left_top.set(int(img_width/3))
+chk_btn = Button(lane_cfg, bg='orange', text='更新設定檔', command=generate_ini)
+exit_btn = Button(lane_cfg, bg='orange', text='離開程式', command=exit_btn)
+'''
+lane_left_top.set(int(img_width/3)) 
 lane_left_bottom.set(int(img_width/4))
 lane_right_top.set(int(img_width/3*2))
 lane_right_bottom.set(int(img_width/4*3))
 warn_line.set(int(img_heigth/4*3))
 stop_line.set(int(img_heigth/5*4))
+'''
+lane_left_top.set(int(lane_left_top_x))
+lane_left_bottom.set(int(warn_left_bottom_x))
+lane_right_top.set(int(lane_right_top_x))
+lane_right_bottom.set(int(warn_right_bottom_x))
+warn_line.set(int(warn_top_y))
+stop_line.set(int(stop_top_y))
+
+chk_btn.config(height='2')
+exit_btn.config(height='2')
 
 lane_left_top.pack()
 lane_left_bottom.pack()
@@ -64,21 +113,30 @@ lane_right_top.pack()
 lane_right_bottom.pack()
 warn_line.pack()
 stop_line.pack()
+chk_btn.pack(fill='x')
+exit_btn.pack(fill='x')
 
 size = (img_width, img_heigth)
 #out = cv2.VideoWriter('output/G0210936.mp4',cv2.VideoWriter_fourcc(*'mp4v'), 3, (480,360))
 
 #video to frame & frame to video
+fps = vc.get(cv2.CAP_PROP_FPS)
+print(fps)
 warn_frame_count = 0 #物體出現在警戒區內的次數
 warn_bool = False #檢查是否有物體出現在警戒區內
+tStart = time.time()
 while(1):
 	ret, frame = vc.read()
+	if time.time() - tStart > sec:
+		now = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+		cv2.imwrite("/home/auo/AGV/image/" + now + ".jpg", frame)
+		tStart = time.time()
 	if frame is not None:
 	#if idx % 20 == 0:
 		#if idx % 100 == 0:
 		#	print("processing " + str(idx) + " images")
 		#start = time.time()
-		classes, confidences, boxes = net.detect(frame, confThreshold=0.3, nmsThreshold=0.5) #0.9s
+		classes, confidences, boxes = net.detect(frame, confThreshold=0.5, nmsThreshold=0.4) #0.9s
 		lane_cfg.update()
 		#車道左線頂 x
 		lane_left_top_x = lane_left_top.get()
@@ -179,7 +237,7 @@ while(1):
 					rectColor = (128, 0, 255)
 					pstring = "footboard " + pstring
 				elif classId == 12:
-					rectColor = (128, 128, 255)
+					rectColor = (128, 255, 255)
 					pstring = "fire extinguisher " + pstring
 				elif classId == 13:
 					continue
@@ -218,7 +276,7 @@ while(1):
 			GPIO.output(CH2, GPIO.HIGH)
 		#frame = cv2.resize(frame, (480, 360), interpolation=cv2.INTER_AREA)
 		#out.write(frame)
-		warn_mask = cv2.resize(warn_mask, (640, 480), interpolation=cv2.INTER_AREA)
+		#warn_mask = cv2.resize(warn_mask, (640, 480), interpolation=cv2.INTER_AREA)
 		frame_new = np.hstack((warn_mask,frame))
 		cv2.imshow("frame", frame_new)
 		#cv2.imshow("mask", warn_mask)
