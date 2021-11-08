@@ -22,7 +22,7 @@ def generate_ini(cfg_name = r'/home/auo/AGV/collision_cfg.ini'):
                     cfg.set(i, 'lane_right_top_x', str(lane_right_top.get()))
                     cfg.set(i, 'warn_right_bottom_x', str(lane_right_bottom.get()))
                     cfg.set(i, 'warn_top_y', str(warn_line.get()))
-                    cfg.set(i, 'warn_top_y', str(stop_line.get()))
+                    cfg.set(i, 'stop_top_y', str(stop_line.get()))
             cfg.write(cfgfile)
             cfgfile.close()
             #lane_cfg.destroy()
