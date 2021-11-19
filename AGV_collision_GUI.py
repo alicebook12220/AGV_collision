@@ -47,7 +47,7 @@ stop_top_y = config["Collision"]["stop_top_y"]
 
 sec = 5
 
-warn_frame_max = 5
+warn_frame_max = 10
 OK_frame_max = 10
 
 RelayA = [21, 20] #[21, 20, 26]
@@ -174,8 +174,6 @@ while(1):
 		channel_count = 3
 		ignore_mask_color = (255,)*channel_count
 		cv2.fillPoly(warn_mask, roi_corners, ignore_mask_color)
-		stop = False
-		slow = False
 		#綠線
 		#cv2.line(frame, (lane_left_top_x, 282), (warn_left_bottom_x, 1079), (0,255,0), 5)
 		#cv2.line(frame, (lane_right_top_x, 282), (warn_right_bottom_x, 1079), (0,255,0), 5)
@@ -267,19 +265,22 @@ while(1):
 			if not warn_bool:
 				warn_frame_count = 0
 				OK_frame_max = OK_frame_max + 1
-			if stop:
-				cv2.putText(frame, "Stop", (int(img_width/3),int(img_heigth/5)), cv2.FONT_HERSHEY_DUPLEX, 5, (0,0,255), 8)
-				GPIO.output(CH1, GPIO.LOW)
-				GPIO.output(CH2, GPIO.HIGH)
-			elif slow:
-				cv2.putText(frame, "Slow Down", (int(img_width/3),int(img_heigth/5)), cv2.FONT_HERSHEY_DUPLEX, 5, (0,128,255), 8)
-				GPIO.output(CH1, GPIO.HIGH)
-				GPIO.output(CH2, GPIO.LOW)
 		else:
 			OK_frame_max = OK_frame_max + 1
+		#print(OK_frame_max)
+		if stop:
+			cv2.putText(frame, "Stop", (int(img_width/3),int(img_heigth/5)), cv2.FONT_HERSHEY_DUPLEX, 5, (0,0,255), 8)
+			GPIO.output(CH1, GPIO.LOW)
+			GPIO.output(CH2, GPIO.HIGH)
+		elif slow:
+			cv2.putText(frame, "Slow", (int(img_width/3),int(img_heigth/5)), cv2.FONT_HERSHEY_DUPLEX, 5, (0,128,255), 8)
+			GPIO.output(CH1, GPIO.HIGH)
+			GPIO.output(CH2, GPIO.LOW)
 		if OK_frame_max >= 10:
-                        slow = False
-                        stop = False
+			OK_frame_max = 10
+			slow = False
+			stop = False
+			cv2.putText(frame, "OK", (int(img_width/3),int(img_heigth/5)), cv2.FONT_HERSHEY_DUPLEX, 5, (0,255,0), 8)
 			GPIO.output(CH1, GPIO.HIGH)
 			GPIO.output(CH2, GPIO.HIGH)
 		#frame = cv2.resize(frame, (480, 360), interpolation=cv2.INTER_AREA)
