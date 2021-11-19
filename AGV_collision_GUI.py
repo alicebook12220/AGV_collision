@@ -45,9 +45,10 @@ warn_top_y = config["Collision"]["warn_top_y"]
 stop_top_y = config["Collision"]["stop_top_y"] 
 
 
-sec = 60
+sec = 5
 
-warn_frame_max = 15
+warn_frame_max = 5
+OK_frame_max = 10
 
 RelayA = [21, 20] #[21, 20, 26]
 CH1 = 21
@@ -124,12 +125,15 @@ fps = vc.get(cv2.CAP_PROP_FPS)
 print(fps)
 warn_frame_count = 0 #物體出現在警戒區內的次數
 warn_bool = False #檢查是否有物體出現在警戒區內
+stop = False
+slow = False
 tStart = time.time()
 while(1):
 	ret, frame = vc.read()
 	if time.time() - tStart > sec:
+		
 		now = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-		cv2.imwrite("/home/auo/AGV/image/" + now + ".jpg", frame)
+		cv2.imwrite("/home/auo/AGV/1111/" + now + ".jpg", frame)
 		tStart = time.time()
 	if frame is not None:
 	#if idx % 20 == 0:
@@ -255,11 +259,14 @@ while(1):
 					if warn_frame_count > warn_frame_max:
 						#判斷角點落在黃區 or 紅區
 						if (y_top + height) <= warn_stop_y:
+							OK_frame_max = 0
 							slow = True
 						elif (y_top + height) > warn_stop_y:
+							OK_frame_max = 0
 							stop = True
 			if not warn_bool:
 				warn_frame_count = 0
+				OK_frame_max = OK_frame_max + 1
 			if stop:
 				cv2.putText(frame, "Stop", (int(img_width/3),int(img_heigth/5)), cv2.FONT_HERSHEY_DUPLEX, 5, (0,0,255), 8)
 				GPIO.output(CH1, GPIO.LOW)
@@ -268,10 +275,11 @@ while(1):
 				cv2.putText(frame, "Slow Down", (int(img_width/3),int(img_heigth/5)), cv2.FONT_HERSHEY_DUPLEX, 5, (0,128,255), 8)
 				GPIO.output(CH1, GPIO.HIGH)
 				GPIO.output(CH2, GPIO.LOW)
-			else:
-				GPIO.output(CH1, GPIO.HIGH)
-				GPIO.output(CH2, GPIO.HIGH)
 		else:
+			OK_frame_max = OK_frame_max + 1
+		if OK_frame_max >= 10:
+                        slow = False
+                        stop = False
 			GPIO.output(CH1, GPIO.HIGH)
 			GPIO.output(CH2, GPIO.HIGH)
 		#frame = cv2.resize(frame, (480, 360), interpolation=cv2.INTER_AREA)
