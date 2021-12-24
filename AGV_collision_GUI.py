@@ -259,6 +259,7 @@ while(1):
 						if (y_top + height) <= warn_stop_y:
 							OK_frame_max = 0
 							slow = True
+							stop = False
 						elif (y_top + height) > warn_stop_y:
 							OK_frame_max = 0
 							stop = True
