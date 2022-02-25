@@ -1,3 +1,4 @@
+#sudo apt-get install gir1.2-gst-rtsp-server-1.0
 import cv2
 import numpy as np
 import time
